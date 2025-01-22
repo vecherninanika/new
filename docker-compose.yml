@@ -1,0 +1,111 @@
+version: '3.9'
+
+services:
+  web:
+    container_name: web
+    build:
+      dockerfile: docker/Dockerfile
+      context: .
+    ports:
+      - "8000:8000"
+    command: scripts/startup.sh -m -l
+    restart: on-failure
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:8000/health || exit 1"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    env_file:
+      - ./conf/.env
+    volumes:
+      - .:/code
+    depends_on:
+      web_db:
+        condition: service_healthy
+    networks:
+      - sirius_network
+
+  web_db:
+    container_name: web_db
+    image: library/postgres:13.2
+    environment:
+      - POSTGRES_USER=postgres
+      - POSTGRES_PASSWORD=postgres
+      - POSTGRES_DB=main_db
+    restart: on-failure
+    ports:
+      - "5433:5432"
+    healthcheck:
+      test: [ "CMD", "pg_isready", "-U", "postgres", "-d", "main_db" ]
+      interval: 5s
+      retries: 5
+    volumes:
+      - ./scripts/postgres:/docker-entrypoint-initdb.d
+    networks:
+      - sirius_network
+
+  balancer:
+    container_name: balancer
+    image: nginx:1.27.2-alpine3.20
+    restart: unless-stopped
+    ports:
+      - 80:80
+    healthcheck:
+      test: ["CMD", "curl", "-f", "http://localhost:80"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    volumes:
+      - ./nginx:/etc/nginx/templates
+    depends_on:
+      - web
+
+  prometheus:
+    image: prom/prometheus
+    container_name: prometheus
+    command:
+      - "--config.file=/etc/prometheus/prometheus_config.yml"
+    ports:
+      - "9090:9090"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "http://localhost:9090"]
+      interval: 10s
+      timeout: 15s
+      retries: 10
+      start_period: 40s
+    depends_on:
+      - web
+    volumes:
+      - ./prometheus:/etc/prometheus
+      - prom_data:/prometheus
+    networks:
+      - sirius_network
+
+  grafana:
+    image: grafana/grafana
+    container_name: grafana
+    ports:
+      - "3000:3000"
+    restart: unless-stopped
+    healthcheck:
+      test: ["CMD", "wget", "-qO-", "http://localhost:3000"]
+      interval: 30s
+      timeout: 10s
+      retries: 3
+      start_period: 40s
+    volumes:
+      - ./grafana:/etc/grafana/provisioning/datasources
+    depends_on:
+      - web
+    networks:
+      - sirius_network
+
+volumes:
+  prom_data:
+
+networks:
+  sirius_network:
+    external: True
