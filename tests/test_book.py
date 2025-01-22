@@ -16,7 +16,7 @@ FIXTURES_PATH = BASE_DIR / "fixtures"
             "test_client",
             "secret",
             [
-                FIXTURES_PATH / "book.json",
+                FIXTURES_PATH / "sirius.book.json",
             ],
             status.HTTP_200_OK,
         ),

@@ -120,7 +120,7 @@ async def update_updated(
     ).one_or_none()
     await session.commit()
 
-    if updated.id is None:
+    if updated is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f'Book "{body.title}" does not exist',
@@ -145,15 +145,17 @@ async def update_updated(
 async def delete_book(
     book_id: int, session: AsyncSession = Depends(get_session)
 ) -> ORJSONResponse:
-    deleted_id = (
+    
+    deleted = (
         await session.execute(delete(Book).where(Book.id == book_id).returning(Book.id))
-    ).one_or_none()[0]
-    await session.commit()
+    ).one_or_none()
 
-    if deleted_id is None:
+    if deleted is None:
         raise HTTPException(
             status_code=status.HTTP_404_NOT_FOUND,
             detail=f"Book with id {book_id} does not exist",
         )
+    deleted_id = deleted[0]
+    await session.commit()
 
     return ORJSONResponse({"id": deleted_id})

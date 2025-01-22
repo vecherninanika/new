@@ -13,11 +13,6 @@ class Settings(BaseSettings):
     KAFKA_BOOTSTRAP_SERVERS: List[str]
     KAFKA_TOPIC: str
 
-    REDIS_HOST: str
-    REDIS_PORT: int
-    REDIS_PASSWORD: str
-    REDIS_SIRIUS_CACHE_PREFIX: str = "sirius"
-
     API_PREFIX: str = "/api"
 
 
